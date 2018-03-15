@@ -7,6 +7,7 @@ import io
 import os
 import sys
 import warnings
+from xml.dom.minidom import parse
 
 import numpy as np
 from numpy import ma
@@ -945,3 +946,75 @@ def test_relim():
     ax.relim()
     ax.autoscale()
     assert ax.get_xlim() == ax.get_ylim() == (0, 1)
+
+
+def test_imsave_svg_standard_res():
+    width, height, block = 800, 600, 50
+    data = tile(linspace(0, 1, block * block * 3).reshape((block, block, 3)), (height // block, width // block, 1))
+    image.imsave(fname='out.%s' % 'svg', format='svg', arr=data)
+    real_parse = parse('out.svg')
+    svg_element = real_parse.getElementsByTagName('svg')[0]
+    image_element = real_parse.getElementsByTagName('image')[0]
+    svg_width, svg_height = svg_element.getAttribute('width')[:-2], svg_element.getAttribute('height')[:-2]
+    image_width, image_height = image_element.getAttribute('width'), image_element.getAttribute('height')
+    assert ((image_width, image_height) == (svg_width, svg_height))
+    os.remove('out.svg')
+
+
+def test_imsave_svg_small_res():
+    width, height, block = 1, 1, 50
+    # since SVGs are supposed to shrink due to float-int conversion, this will result in a 0-size SVG
+    data = tile(linspace(0, 1, block * block * 3).reshape((block, block, 3)), (height // block, width // block, 1))
+    image.imsave(fname='out.%s' % 'svg', format='svg', arr=data)
+    real_parse = parse('out.svg')
+    svg_element = real_parse.getElementsByTagName('svg')[0]
+    svg_width, svg_height = svg_element.getAttribute('width')[:-2], svg_element.getAttribute('height')[:-2]
+    assert ((svg_width, svg_height) == ("0", "0"))
+    os.remove('out.svg')
+
+
+def test_imsave_svg_standard_res_small_block():
+    width, height, block = 800, 600, 1
+    data = tile(linspace(0, 1, block * block * 3).reshape((block, block, 3)), (height // block, width // block, 1))
+    image.imsave(fname='out.%s' % 'svg', format='svg', arr=data)
+    real_parse = parse('out.svg')
+    svg_element = real_parse.getElementsByTagName('svg')[0]
+    image_element = real_parse.getElementsByTagName('image')[0]
+    svg_width, svg_height = svg_element.getAttribute('width')[:-2], svg_element.getAttribute('height')[:-2]
+    image_width, image_height = image_element.getAttribute('width'), image_element.getAttribute('height')
+    assert ((image_width, image_height) == (svg_width, svg_height))
+    os.remove('out.svg')
+
+
+def test_imsave_svg_small_res_small_block():
+    width, height, block = 1, 1, 1
+    # since SVGs are supposed to shrink due to float-int conversion, this will result in a 0-size SVG
+    data = tile(linspace(0, 1, block * block * 3).reshape((block, block, 3)), (height // block, width // block, 1))
+    image.imsave(fname='out.%s' % 'svg', format='svg', arr=data)
+    real_parse = parse('out.svg')
+    svg_element = real_parse.getElementsByTagName('svg')[0]
+    svg_width, svg_height = svg_element.getAttribute('width')[:-2], svg_element.getAttribute('height')[:-2]
+    assert ((svg_width, svg_height) == ("0", "0"))
+    os.remove('out.svg')
+
+
+def test_imsave_svg_zero_dimension():
+    width, height, block = 0, 0, 1
+    # this will also result in a 0-size SVG
+    data = tile(linspace(0, 1, block * block * 3).reshape((block, block, 3)), (height // block, width // block, 1))
+    image.imsave(fname='out.%s' % 'svg', format='svg', arr=data)
+    real_parse = parse('out.svg')
+    svg_element = real_parse.getElementsByTagName('svg')[0]
+    svg_width, svg_height = svg_element.getAttribute('width')[:-2], svg_element.getAttribute('height')[:-2]
+    assert ((svg_width, svg_height) == ("0", "0"))
+    os.remove('out.svg')
+
+
+def test_imsave_svg_float_point_dimension():
+    width, height, block = 100.5, 50.5, 1
+    # ensure error catching works
+    try:
+        tile(linspace(0, 1, block * block * 3).reshape((block, block, 3)), (height // block, width // block, 1))
+        raise Exception("TypeError was not thrown when it should have been")
+    except (TypeError):
+        pass

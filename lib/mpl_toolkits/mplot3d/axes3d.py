@@ -82,6 +82,7 @@ class Axes3D(Axes):
         self.initial_elev = kwargs.pop('elev', 30)
         zscale = kwargs.pop('zscale', None)
         sharez = kwargs.pop('sharez', None)
+        pbaspect = kwargs.pop('pbaspect', None)
         self.set_proj_type(kwargs.pop('proj_type', 'persp'))
 
         self.xy_viewLim = unit_bbox()
@@ -127,6 +128,11 @@ class Axes3D(Axes):
         self._pseudo_w, self._pseudo_h = pseudo_bbox[1] - pseudo_bbox[0]
 
         self.figure.add_axes(self)
+
+        if pbaspect is not None:
+            self.pbaspect = pbaspect
+        else:
+            self.pbaspect = [1.0, 1.0, 1.0]
 
     def set_axis_off(self):
         self._axis3don = False
@@ -1005,9 +1011,11 @@ class Axes3D(Axes):
         """
         relev, razim = np.pi * self.elev/180, np.pi * self.azim/180
 
-        xmin, xmax = self.get_xlim3d()
-        ymin, ymax = self.get_ylim3d()
-        zmin, zmax = self.get_zlim3d()
+        calc_axes = lambda x, y: ((x[0] / y), (x[1] / y))
+
+        xmin, xmax = calc_axes(self.get_xlim3d(), self.pbaspect[0])
+        ymin, ymax = calc_axes(self.get_ylim3d(), self.pbaspect[1])
+        zmin, zmax = calc_axes(self.get_zlim3d(), self.pbaspect[2])
 
         # transform to uniform world coordinates 0-1.0,0-1.0,0-1.0
         worldM = proj3d.world_transformation(xmin, xmax,

@@ -83,6 +83,7 @@ class Axes3D(Axes):
         zscale = kwargs.pop('zscale', None)
         sharez = kwargs.pop('sharez', None)
         pbaspect = kwargs.pop('pbaspect', None)
+        pbaspect_normalize = kwargs.pop('pbaspect_normalize', None)
         self.set_proj_type(kwargs.pop('proj_type', 'persp'))
 
         self.xy_viewLim = unit_bbox()
@@ -128,6 +129,11 @@ class Axes3D(Axes):
         self._pseudo_w, self._pseudo_h = pseudo_bbox[1] - pseudo_bbox[0]
 
         self.figure.add_axes(self)
+
+        if pbaspect_normalize is not None:
+            self.pbaspect_normalize = pbaspect_normalize
+        else:
+            self.pbaspect_normalize = False
 
         if pbaspect is not None:
             self.pbaspect = pbaspect
@@ -1011,11 +1017,16 @@ class Axes3D(Axes):
         """
         relev, razim = np.pi * self.elev/180, np.pi * self.azim/180
 
-        calc_axes = lambda x, y: ((x[0] / y), (x[1] / y))
+        if (self.pbaspect_normalize):
+            pbanormal_factor = math.sqrt((self.pbaspect[0] ** 2 + self.pbaspect[1] ** 2 + self.pbaspect[2] ** 2) / 3)
+        else:
+            pbanormal_factor = 1
 
-        xmin, xmax = calc_axes(self.get_xlim3d(), self.pbaspect[0])
-        ymin, ymax = calc_axes(self.get_ylim3d(), self.pbaspect[1])
-        zmin, zmax = calc_axes(self.get_zlim3d(), self.pbaspect[2])
+        calc_axes = lambda x, y, nf: ((x[0] / (y / nf)), (x[1]) / (y / nf))
+
+        xmin, xmax = calc_axes(self.get_xlim3d(), self.pbaspect[0], pbanormal_factor)
+        ymin, ymax = calc_axes(self.get_ylim3d(), self.pbaspect[1], pbanormal_factor)
+        zmin, zmax = calc_axes(self.get_zlim3d(), self.pbaspect[2], pbanormal_factor)
 
         # transform to uniform world coordinates 0-1.0,0-1.0,0-1.0
         worldM = proj3d.world_transformation(xmin, xmax,
